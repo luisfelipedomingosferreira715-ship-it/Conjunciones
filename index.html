@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conjunções</title>
+
+<style>
+:root{
+--bg:#0f1115;
+--panel:#171a21;
+--panel-soft:#1e222b;
+--border:#2a2f3a;
+--text:#e5e7eb;
+--text-dim:#9aa3b2;
+--accent:#2b2b2b;
+--correct:#22c55e;
+--wrong:#ef4444;
+}
+
+*{box-sizing:border-box}
+
+body{
+font-family:Inter,system-ui,Arial,sans-serif;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+margin:0;
+background:radial-gradient(circle at top,#151922,#0b0d12);
+color:var(--text);
+}
+
+.container{
+background:var(--panel);
+padding:32px;
+border-radius:18px;
+border:1px solid var(--border);
+width:92%;
+max-width:640px;
+box-shadow:0 10px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+.header{text-align:center;margin-bottom:24px}
+.header h1{margin:0;font-weight:600}
+
+.info{
+display:flex;
+justify-content:space-between;
+gap:10px;
+margin:14px 0;
+font-size:13px;
+flex-wrap:wrap;
+}
+
+.info span{
+padding:6px 12px;
+background:var(--panel-soft);
+border:1px solid var(--border);
+border-radius:999px;
+color:var(--text-dim);
+}
+
+.question{
+margin:22px 0;
+padding:22px;
+background:var(--panel-soft);
+border:1px solid var(--border);
+border-radius:14px;
+}
+
+.question p{
+margin:0 0 18px 0;
+font-size:17px;
+line-height:1.5;
+}
+
+.options{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+}
+
+.option-btn{
+padding:13px;
+border:1px solid var(--border);
+background:#14171d;
+color:var(--text);
+border-radius:10px;
+cursor:pointer;
+font-size:14px;
+transition:.15s ease;
+}
+
+.option-btn:hover{
+border-color:var(--accent);
+transform:translateY(-1px);
+}
+
+.option-btn.correct{
+background:rgba(34,197,94,.15);
+border-color:var(--correct);
+color:#bbf7d0;
+}
+
+.option-btn.incorrect{
+background:rgba(239,68,68,.15);
+border-color:var(--wrong);
+color:#fecaca;
+}
+
+.btn-container{text-align:center;margin-top:26px}
+
+button{
+padding:13px 32px;
+font-size:15px;
+background:var(--accent);
+color:#fff;
+border:none;
+border-radius:10px;
+cursor:pointer;
+font-weight:600;
+transition:.18s ease;
+}
+
+button:hover{filter:brightness(1.1);transform:translateY(-1px)}
+button:disabled{background:#3a3f4a;cursor:not-allowed;transform:none}
+
+.result-screen{text-align:center;padding:40px 10px}
+.final-score{font-size:52px;margin:16px 0;font-weight:700;color:var(--accent)}
+.evaluation{font-size:17px;margin:20px 0;color:var(--text-dim)}
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<div id="gameScreen">
+<div class="header"><h1>Jogo de Conjunções</h1></div>
+
+<div class="info">
+<span>Nível: <strong id="round">1</strong>/4</span>
+<span>Dificuldade: <strong id="difficulty">-</strong></span>
+<span>Pontuação: <strong id="score">0</strong></span>
+</div>
+
+<div class="info">
+<span>Frase do nível: <strong id="phraseCount">1</strong>/<span id="maxPerLevel">5</span></span>
+<span>Acertos totais: <strong id="hits">0</strong></span>
+</div>
+
+<div class="question">
+<p id="sentenceText"></p>
+<div class="options" id="optionsContainer"></div>
+</div>
+
+<div class="btn-container">
+<button id="nextBtn" onclick="nextQuestion()" disabled>Próxima</button>
+</div>
+</div>
+
+<div id="resultScreen" class="result-screen hidden">
+<h1 id="resultTitle"></h1>
+<div class="final-score" id="finalScore"></div>
+<div class="evaluation" id="evaluation"></div>
+<button onclick="location.reload()">Jogar Novamente</button>
+</div>
+
+</div>
+
+<script>
+// =======================
+// CONFIG
+// =======================
+
+const QUESTIONS_PER_LEVEL = 5;
+const BANK_SIZE = 25;
+
+const difficulties = ['fácil','médio','difícil','muito difícil'];
+
+const pointsByDifficulty = {
+'fácil':1,
+'médio':2,
+'difícil':3,
+'muito difícil':3
+};
+
+// =======================
+// BANCO DE FRASES
+// =======================
+
+const phrases = {
+  'fácil': [
+    {sentence:"Eu queria sair, ___ estava chovendo.",options:["mas","porque","ou","logo"],correct:0},
+    {sentence:"Estudei muito, ___ passei.",options:["então","mas","porque","ou"],correct:0},
+    {sentence:"Vou ao mercado ___ à padaria.",options:["e","mas","porque","porém"],correct:0},
+    {sentence:"Não fui ___ estava doente.",options:["porque","mas","e","ou"],correct:0},
+    {sentence:"Ele correu, ___ caiu.",options:["mas","e","porque","logo"],correct:0},
+    {sentence:"Quero pizza ___ hambúrguer.",options:["ou","mas","logo","porque"],correct:0},
+    {sentence:"Estava cansado, ___ continuei.",options:["mas","porque","logo","ou"],correct:0},
+    {sentence:"Fui ao cinema ___ ao shopping.",options:["e","mas","ou","porque"],correct:0},
+    {sentence:"Estava feliz, ___ sorriu.",options:["logo","mas","porque","ou"],correct:0},
+    {sentence:"Não estudei, ___ passei.",options:["mas","porque","logo","ou"],correct:0},
+    {sentence:"Quero café ___ chá.",options:["ou","mas","porque","logo"],correct:0},
+    {sentence:"Ele falou, ___ ninguém ouviu.",options:["mas","porque","logo","ou"],correct:0},
+    {sentence:"Estava tarde, ___ dormi.",options:["logo","mas","porque","ou"],correct:0},
+    {sentence:"Fui ao parque ___ estava sol.",options:["porque","mas","ou","logo"],correct:0},
+    {sentence:"Ele correu, ___ chegou primeiro.",options:["logo","mas","porque","ou"],correct:0},
+    {sentence:"Quero estudar ___ trabalhar.",options:["ou","mas","porque","logo"],correct:0},
+    {sentence:"Estava frio, ___ saí.",options:["mas","porque","logo","ou"],correct:0},
+    {sentence:"Fui ao médico ___ ao dentista.",options:["e","mas","ou","porque"],correct:0},
+    {sentence:"Não comi, ___ estava sem fome.",options:["porque","mas","logo","ou"],correct:0},
+    {sentence:"Ele tentou, ___ não conseguiu.",options:["mas","porque","logo","ou"],correct:0},
+    {sentence:"Quero bolo ___ sorvete.",options:["ou","mas","porque","logo"],correct:0},
+    {sentence:"Estava cansado, ___ dormi cedo.",options:["logo","mas","porque","ou"],correct:0},
+    {sentence:"Ele estudou, ___ passou.",options:["logo","mas","porque","ou"],correct:0},
+    {sentence:"Não fui, ___ estava ocupado.",options:["porque","mas","logo","ou"],correct:0},
+    {sentence:"Quero viajar ___ descansar.",options:["ou","mas","porque","logo"],correct:0}
+  ],
+
+  'médio': [
+    {sentence:"Ela estudou bastante, ___ não passou.",options:["mas","logo","porque","e"],correct:0},
+    {sentence:"Fiquei em casa ___ estava cansado.",options:["porque","mas","ou","logo"],correct:0},
+    {sentence:"Ele treinou muito, ___ venceu.",options:["logo","mas","ou","porque"],correct:0},
+    {sentence:"Queria sair, ___ preferi dormir.",options:["porém","logo","porque","e"],correct:0},
+    {sentence:"Choveu muito, ___ a rua alagou.",options:["por isso","mas","ou","e"],correct:0},
+    {sentence:"Estava tarde, ___ fomos embora.",options:["então","mas","porque","ou"],correct:0},
+    {sentence:"Ele estudou, ___ não entendeu.",options:["mas","logo","porque","e"],correct:0},
+    {sentence:"Fiquei feliz, ___ chorei.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Ele correu, ___ chegou atrasado.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Estava cansado, ___ continuei.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Queria viajar, ___ não pude.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Ele tentou, ___ não conseguiu.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Estava chovendo, ___ saí.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Queria estudar, ___ trabalhei.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Ele falou, ___ ninguém ouviu.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Estava frio, ___ fui ao parque.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Queria comer, ___ não tinha dinheiro.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Ele correu, ___ caiu.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Estava cansado, ___ trabalhei.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Queria sair, ___ fiquei em casa.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Ele estudou, ___ não passou.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Estava tarde, ___ continuei.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Queria viajar, ___ não consegui.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Ele tentou, ___ falhou.",options:["mas","logo","porque","ou"],correct:0},
+    {sentence:"Estava feliz, ___ chorei.",options:["mas","logo","porque","ou"],correct:0}
+  ],
+
+  'difícil': [
+    {sentence:"Ele saiu cedo, ___ chegasse a tempo.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Estude bastante, ___ seja aprovado.",options:["para que","mas","logo","ou"],correct:0},
+    {sentence:"Falou baixo, ___ ninguém ouvisse.",options:["para que","porque","mas","ou"],correct:0},
+    {sentence:"Corra, ___ perderá o ônibus.",options:["ou","mas","porque","e"],correct:0},
+    {sentence:"Treine muito, ___ vença.",options:["para que","mas","ou","porque"],correct:0},
+    {sentence:"Fale alto, ___ todos escutem.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Estude, ___ consiga passar.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Corra, ___ não se atrase.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Trabalhe, ___ tenha sucesso.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Fale baixo, ___ ninguém perceba.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Estude muito, ___ seja aprovado.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Corra rápido, ___ chegue cedo.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Treine bastante, ___ vença.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Fale alto, ___ todos entendam.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Estude, ___ consiga aprender.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Corra, ___ não perca.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Trabalhe, ___ tenha sucesso.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Fale baixo, ___ ninguém escute.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Estude, ___ seja aprovado.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Corra rápido, ___ chegue cedo.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Treine, ___ vença.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Fale alto, ___ todos escutem.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Estude muito, ___ consiga passar.",options:["para que","mas","porque","ou"],correct:0},
+    {sentence:"Trabalhe duro, ___ alcance seus objetivos.",options:["para que","mas","porque","ou"],correct:0}
+    ],
+    'muito difícil': [
+  {sentence:"Saiu cedo, ___ estivesse cansado.",options:["embora","porque","e","ou"],correct:0},
+  {sentence:"Continuou, ___ fosse difícil.",options:["embora","mas","porque","ou"],correct:0},
+  {sentence:"Falou, ___ ninguém pediu.",options:["ainda que","mas","porque","ou"],correct:0},
+  {sentence:"Foi trabalhar, ___ doente.",options:["mesmo que","porque","e","ou"],correct:0},
+  {sentence:"Continuou tentando, ___ falhasse.",options:["mesmo que","mas","porque","ou"],correct:0},
+  {sentence:"Saiu, ___ estivesse tarde.",options:["embora","porque","e","ou"],correct:0},
+  {sentence:"Estudou, ___ estivesse cansado.",options:["embora","mas","porque","ou"],correct:0},
+  {sentence:"Trabalhou, ___ estivesse doente.",options:["mesmo que","mas","porque","ou"],correct:0},
+  {sentence:"Falou, ___ ninguém quisesse ouvir.",options:["ainda que","mas","porque","ou"],correct:0},
+  {sentence:"Correu, ___ estivesse cansado.",options:["embora","mas","porque","ou"],correct:0},
+  {sentence:"Tentou, ___ soubesse que falharia.",options:["mesmo que","mas","porque","ou"],correct:0},
+  {sentence:"Estudou, ___ não tivesse tempo.",options:["embora","mas","porque","ou"],correct:0},
+  {sentence:"Trabalhou, ___ fosse difícil.",options:["embora","mas","porque","ou"],correct:0},
+  {sentence:"Falou, ___ ninguém entendesse.",options:["ainda que","mas","porque","ou"],correct:0},
+  {sentence:"Saiu, ___ estivesse chovendo.",options:["embora","mas","porque","ou"],correct:0},
+  {sentence:"Continuou, ___ estivesse cansado.",options:["mesmo que","mas","porque","ou"],correct:0},
+  {sentence:"Estudou, ___ não quisesse.",options:["embora","mas","porque","ou"],correct:0},
+  {sentence:"Trabalhou, ___ estivesse tarde.",options:["mesmo que","mas","porque","ou"],correct:0},
+  {sentence:"Falou, ___ ninguém prestasse atenção.",options:["ainda que","mas","porque","ou"],correct:0},
+  {sentence:"Correu, ___ estivesse doente.",options:["embora","mas","porque","ou"],correct:0},
+  {sentence:"Tentou, ___ soubesse que seria difícil.",options:["mesmo que","mas","porque","ou"],correct:0},
+  {sentence:"Estudou, ___ não tivesse vontade.",options:["embora","mas","porque","ou"],correct:0},
+  {sentence:"Trabalhou, ___ fosse impossível.",options:["embora","mas","porque","ou"],correct:0},
+  {sentence:"Falou, ___ ninguém ligasse.",options:["ainda que","mas","porque","ou"],correct:0},
+  {sentence:"Saiu, ___ estivesse perigoso.",options:["embora","mas","porque","ou"],correct:0}
+]
+};
+
+// =======================
+// STATE
+// =======================
+
+let difficultyIndex=0;
+let questionInDifficulty=0;
+let score=0;
+let totalCorrect=0;
+let answered=false;
+
+let usedQuestions={
+'fácil':new Set(),
+'médio':new Set(),
+'difícil':new Set(),
+'muito difícil':new Set()
+};
+
+let currentPhraseObj=null;
+
+// =======================
+// PREPARE PHRASES
+// =======================
+
+function shuffleArray(a){
+for(let i=a.length-1;i>0;i--){
+const j=Math.floor(Math.random()*(i+1));
+[a[i],a[j]]=[a[j],a[i]];
+}
+}
+function shuffleOptions(question){
+    const options = question.options.map((text, index) => ({
+        text,
+        isCorrect: index === question.correct
+    }));
+
+    shuffleArray(options);
+
+    question.options = options.map(o => o.text);
+    question.correct = options.findIndex(o => o.isCorrect);
+}
+
+function preparePhrases(){
+difficulties.forEach(difficulty=>{
+const list=phrases[difficulty];
+if(!Array.isArray(list)||list.length===0) return;
+
+if(list.length>=BANK_SIZE){
+shuffleArray(list);
+phrases[difficulty]=list.slice(0,BANK_SIZE);
+return;
+}
+
+const newList=[];
+let idx=0;
+while(newList.length<BANK_SIZE){
+const item=JSON.parse(JSON.stringify(list[idx%list.length]));
+newList.push(item);
+idx++;
+}
+shuffleArray(newList);
+phrases[difficulty]=newList;
+});
+}
+
+// =======================
+// HELPERS
+// =======================
+
+function getCurrentDifficulty(){
+return difficulties[difficultyIndex];
+}
+
+function getRandomQuestion(difficulty){
+const list=phrases[difficulty];
+const used=usedQuestions[difficulty];
+
+const available=list
+.map((q,i)=>({q,i}))
+.filter(obj=>!used.has(obj.i));
+
+if(available.length===0){
+used.clear();
+return getRandomQuestion(difficulty);
+}
+
+const pick=available[Math.floor(Math.random()*available.length)];
+used.add(pick.i);
+return pick.q;
+}
+
+// =======================
+// LOAD QUESTION
+// =======================
+
+function loadQuestion(){
+const difficulty=getCurrentDifficulty();
+currentPhraseObj = JSON.parse(JSON.stringify(getRandomQuestion(difficulty)));
+shuffleOptions(currentPhraseObj);
+
+document.getElementById('round').textContent=difficultyIndex+1;
+document.getElementById('difficulty').textContent=difficulty;
+document.getElementById('phraseCount').textContent=questionInDifficulty+1;
+document.getElementById('hits').textContent=totalCorrect;
+document.getElementById('sentenceText').textContent=currentPhraseObj.sentence;
+
+const container=document.getElementById('optionsContainer');
+container.innerHTML='';
+
+answered=false;
+document.getElementById('nextBtn').disabled=true;
+
+currentPhraseObj.options.forEach((opt,i)=>{
+const btn=document.createElement('button');
+btn.className='option-btn';
+btn.textContent=opt;
+btn.onclick=()=>selectOption(i,currentPhraseObj.correct);
+container.appendChild(btn);
+});
+}
+
+// =======================
+// SELECT OPTION
+// =======================
+
+function selectOption(index,correct){
+if(answered) return;
+answered=true;
+
+const buttons=document.querySelectorAll('.option-btn');
+const difficulty=getCurrentDifficulty();
+const pts=pointsByDifficulty[difficulty];
+
+if(index===correct){
+buttons[index].classList.add('correct');
+totalCorrect++;
+score+=pts;
+}else{
+score-=pts;
+buttons[index].classList.add('incorrect');
+buttons[correct].classList.add('correct');
+}
+
+document.getElementById('score').textContent=score;
+document.getElementById('hits').textContent=totalCorrect;
+document.getElementById('nextBtn').disabled=false;
+}
+
+// =======================
+// NEXT QUESTION
+// =======================
+
+function nextQuestion(){
+questionInDifficulty++;
+
+if(questionInDifficulty<QUESTIONS_PER_LEVEL){
+loadQuestion();
+return;
+}
+
+questionInDifficulty=0;
+difficultyIndex++;
+
+if(difficultyIndex>=difficulties.length){
+endGame();
+return;
+}
+
+loadQuestion();
+}
+
+// =======================
+// END GAME
+// =======================
+
+function endGame(){
+document.getElementById('gameScreen').classList.add('hidden');
+document.getElementById('resultScreen').classList.remove('hidden');
+
+const won=totalCorrect>=10;
+
+document.getElementById('resultTitle').textContent=
+won?'JOGO GANHO!':'GAME OVER';
+
+document.getElementById('finalScore').textContent=score;
+document.getElementById('evaluation').textContent=getEvaluation(score);
+}
+
+function getEvaluation(points){
+if(points<10) return 'Pode melhorar.';
+if(points<25) return 'Bom começo!';
+if(points<40) return 'Muito bom!';
+if(points<55) return 'Excelente!';
+return 'Perfeito! Mestre das conjunções!';
+}
+
+// =======================
+// START
+// =======================
+
+document.getElementById('maxPerLevel').textContent=QUESTIONS_PER_LEVEL;
+preparePhrases();
+loadQuestion();
+</script>
+</body>
+</html>
